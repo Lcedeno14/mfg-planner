@@ -1,0 +1,135 @@
+<section class="card" [style.--dept-color]="dept().color">
+  <header class="card-head">
+    <div class="head-left">
+      <span class="dept-swatch"></span>
+      <h2>{{ dept().name }}</h2>
+    </div>
+    <div class="head-score">
+      <span class="score-nums">{{ dept().weekActual }}<span class="of">/</span>{{ dept().weekGoal }}</span>
+      <span class="score-pct" [class]="pctClass()">{{ pct() === null ? '—' : pct() + '%' }}</span>
+    </div>
+  </header>
+
+  <!-- Deliverables -->
+  <div class="block">
+    <div class="block-title">
+      <span>Deliverables</span>
+      <p-button icon="pi pi-plus" label="Op" size="small" text (onClick)="openAdd()" />
+    </div>
+
+    @if (dept().deliverables.length === 0) {
+      <p class="empty">No operations planned yet. Add one to start the week.</p>
+    }
+
+    @for (d of dept().deliverables; track d.id) {
+      <div class="deliverable">
+        <div class="del-head">
+          <span class="op-code">{{ d.op_code }}</span>
+          <span class="op-name">{{ d.op_name }}</span>
+          <span class="del-progress">{{ snDone(d) }}/{{ d.goal }} done</span>
+          <input class="goal-input" type="number" min="0" [(ngModel)]="d.goal"
+                 (change)="saveGoal(d)" aria-label="Weekly goal" pTooltip="Weekly goal" tooltipPosition="top" />
+          <button class="icon-btn" (click)="removeDeliverable(d)" aria-label="Remove operation">
+            <i class="pi pi-trash"></i>
+          </button>
+        </div>
+        <div class="sn-row">
+          @for (s of d.serials; track s.id) {
+            <button class="sn-chip" [class.done]="s.done" (click)="toggleSn(s)"
+                    [pTooltip]="s.done ? 'Completed — click to reopen' : 'Click when completed'" tooltipPosition="top">
+              @if (s.done) { <i class="pi pi-check"></i> }
+              {{ s.sn }}
+              <span class="sn-x" (click)="removeSn($event, s, d)" role="button" aria-label="Remove serial">×</span>
+            </button>
+          }
+          @if (addingSnFor() === d.id) {
+            <input class="sn-input" type="text" [(ngModel)]="newSn" placeholder="SN 1234"
+                   (keyup.enter)="confirmAddSn(d)" (blur)="confirmAddSn(d)" autofocus />
+          } @else {
+            <button class="sn-add" (click)="startAddSn(d)">+ SN</button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Daily plan -->
+  <div class="block">
+    <div class="block-title"><span>Daily plan</span></div>
+    <table class="day-table">
+      <thead>
+        <tr>
+          <th class="col-day">Day</th>
+          <th class="col-plan">Plan for the day</th>
+          <th class="col-num">Goal</th>
+          <th class="col-num">Actual</th>
+          <th class="col-notes"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (day of dept().days; track day.day) {
+          <tr [class]="'row-' + dayPct(day)">
+            <td class="col-day">{{ day.name.slice(0, 3) }}</td>
+            <td class="col-plan">
+              <input class="plan-input" type="text" [(ngModel)]="day.goal_note"
+                     (change)="saveDay(day)" placeholder="e.g. SN 1234 to coat" />
+            </td>
+            <td class="col-num">
+              <input class="num-input" type="number" min="0" [(ngModel)]="day.goal" (change)="saveDay(day)" />
+            </td>
+            <td class="col-num">
+              <input class="num-input actual" type="number" min="0" [(ngModel)]="day.actual" (change)="saveDay(day)" />
+            </td>
+            <td class="col-notes">
+              <button class="icon-btn" (click)="openNotes(day)"
+                      [pTooltip]="hasNotes(day) ? 'Shift notes & comments' : 'Add shift notes'" tooltipPosition="left">
+                <i class="pi" [class.pi-comment]="!hasNotes(day)" [class.pi-comments]="hasNotes(day)"
+                   [class.has-notes]="hasNotes(day)"></i>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Add operation dialog -->
+<p-dialog [visible]="addOpen()" (visibleChange)="addOpen.set($event)" [modal]="true"
+          [header]="'Add operation — ' + dept().name" [style]="{ width: '26rem' }">
+  <div class="dialog-form">
+    <label>Operation</label>
+    <p-select [options]="deptOps()" [(ngModel)]="newOp" optionLabel="op_code" [filter]="true"
+              placeholder="Pick from the op catalog" appendTo="body" styleClass="w-full">
+      <ng-template #item let-op>
+        <span class="op-code">{{ op.op_code }}</span> {{ op.op_name }}
+        <span class="op-hours">{{ op.avg_labor_hours }}h avg</span>
+      </ng-template>
+    </p-select>
+    <label>Weekly goal</label>
+    <input class="num-input wide" type="number" min="0" [(ngModel)]="newGoal" />
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancel" text (onClick)="addOpen.set(false)" />
+    <p-button label="Add operation" [disabled]="!newOp" (onClick)="confirmAdd()" />
+  </ng-template>
+</p-dialog>
+
+<!-- Notes dialog -->
+<p-dialog [visible]="notesOpen()" (visibleChange)="notesOpen.set($event)" [modal]="true"
+          [header]="notesDay ? dept().name + ' — ' + notesDay.name : ''" [style]="{ width: '30rem' }">
+  @if (notesDay) {
+    <div class="dialog-form">
+      <label>1st shift</label>
+      <textarea rows="2" [(ngModel)]="notesDay.shift1_note" placeholder="What happened on 1st shift"></textarea>
+      <label>2nd shift</label>
+      <textarea rows="2" [(ngModel)]="notesDay.shift2_note" placeholder="What happened on 2nd shift"></textarea>
+      <label>Comment</label>
+      <textarea rows="2" [(ngModel)]="notesDay.comment" placeholder="Anything the team should know"></textarea>
+    </div>
+  }
+  <ng-template #footer>
+    <p-button label="Cancel" text (onClick)="notesOpen.set(false)" />
+    <p-button label="Save notes" (onClick)="saveNotes()" />
+  </ng-template>
+</p-dialog>

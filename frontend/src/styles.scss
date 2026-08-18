@@ -1,0 +1,54 @@
+/* Fonts */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import 'primeicons/primeicons.css';
+
+:root {
+  --paper: #f0f2ef;
+  --panel: #ffffff;
+  --ink: #17202b;
+  --ink-soft: #55606c;
+  --rule: #d4d9d2;
+  --ok: #178a50;
+  --ok-soft: #e2f3e9;
+  --warn: #c77d0a;
+  --warn-soft: #faf0dc;
+  --bad: #c9382e;
+  --bad-soft: #f9e5e2;
+  --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --body: 'Inter', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 14px;
+}
+
+h1, h2, h3 { font-family: var(--display); letter-spacing: 0.01em; }
+
+.status-good { background: var(--ok); color: #fff; }
+.status-warn { background: var(--warn); color: #fff; }
+.status-bad { background: var(--bad); color: #fff; }
+.status-idle { background: var(--rule); color: var(--ink-soft); }
+
+/* quieter inputs inside dense tables */
+.cell-input.p-inputtext,
+.cell-input .p-inputtext {
+  padding: 0.3rem 0.45rem;
+  font-size: 0.85rem;
+}
+
+:focus-visible { outline: 2px solid #33689f; outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
