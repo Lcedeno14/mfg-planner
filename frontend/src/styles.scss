@@ -8,17 +8,37 @@
 @import 'primeicons/primeicons.css';
 
 :root {
-  --paper: #f0f2ef;
+  /* Surfaces */
+  --paper: #eef2f6;
   --panel: #ffffff;
-  --ink: #17202b;
-  --ink-soft: #55606c;
-  --rule: #d4d9d2;
+
+  /* Text */
+  --ink: #081520;
+  --ink-soft: #53606d;
+
+  /* Rules — -strong for tables that need to hold up in print */
+  --rule: #d5dee8;
+  --rule-strong: #bac4cf;
+
+  /* Brand ramp, light to dark */
+  --brand-tint: #cfe4ed;
+  --brand-soft: #5aa7c6;
+  --brand-bright: #3ec7f4;
+  --brand: #0078a9;
+  --brand-hover: #026a94;
+  --brand-deep: #044d6b;
+  --brand-darkest: #063042;
+  --brand-ink: #002e43;
+
+  /* Status — deliberately outside the brand ramp so they stay legible as signals */
   --ok: #178a50;
   --ok-soft: #e2f3e9;
   --warn: #c77d0a;
   --warn-soft: #faf0dc;
   --bad: #c9382e;
   --bad-soft: #f9e5e2;
+  --accent: #f5b83d;
+
   --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --body: 'Inter', system-ui, sans-serif;
 }
@@ -47,8 +67,18 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: 0.01em; }
   font-size: 0.85rem;
 }
 
-:focus-visible { outline: 2px solid #33689f; outline-offset: 1px; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+@media print {
+  /* Zero page margins leave no room for the browser's own header/footer
+     (document title and URL), so it prints neither. Printed pages get their
+     margins from the report's own padding instead. */
+  @page { margin: 0; }
+  html, body { background: #fff; }
+  .topbar { display: none !important; }
+  main { padding: 0 !important; max-width: none !important; }
 }

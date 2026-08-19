@@ -1,5 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -23,6 +24,9 @@ import { DepartmentCardComponent } from '../../components/department-card/depart
       <p-select [options]="weeks()" [ngModel]="selectedWeek()" (ngModelChange)="selectWeek($event)"
                 optionLabel="label" placeholder="Pick a week" styleClass="week-select" />
       <p-button icon="pi pi-plus" label="New week" size="small" outlined (onClick)="newWeekOpen.set(true)" />
+      @if (selectedWeek()) {
+        <p-button icon="pi pi-print" label="Report" size="small" text (onClick)="openReport()" />
+      }
       <span class="spacer"></span>
       @if (board(); as b) {
         <span class="review-hint">Daily review — click a serial number when it's completed.</span>
@@ -43,8 +47,9 @@ import { DepartmentCardComponent } from '../../components/department-card/depart
     <p-dialog [visible]="newWeekOpen()" (visibleChange)="newWeekOpen.set($event)" [modal]="true"
               header="New week" [style]="{ width: '26rem' }">
       <div class="dialog-form">
-        <label>Week of (Monday)</label>
+        <label>Week of</label>
         <p-datepicker [(ngModel)]="newWeekDate" dateFormat="yy-mm-dd" [showIcon]="true" appendTo="body" />
+        <small class="hint">Pick any date — the week is anchored to its Monday. Only one week per Mon–Sat range.</small>
         <label class="chk">
           <p-checkbox [(ngModel)]="copyPrevious" [binary]="true" inputId="copyPrev" />
           Copy operations from the selected week
@@ -74,6 +79,7 @@ import { DepartmentCardComponent } from '../../components/department-card/depart
     }
     .dialog-form .chk { display: flex; align-items: center; gap: 0.5rem; text-transform: none;
       letter-spacing: 0; font-size: 0.85rem; font-weight: 500; margin-top: 0.5rem; }
+    .dialog-form .hint { color: var(--ink-soft); font-size: 0.78rem; text-transform: none; letter-spacing: 0; }
   `],
 })
 export class BoardPage implements OnInit {
@@ -86,7 +92,12 @@ export class BoardPage implements OnInit {
   newWeekDate: Date | null = null;
   copyPrevious = true;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private router: Router) {}
+
+  openReport() {
+    const w = this.selectedWeek();
+    if (w) this.router.navigate(['/report', w.id]);
+  }
 
   ngOnInit() {
     this.api.ops().subscribe(o => this.ops.set(o));

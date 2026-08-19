@@ -105,6 +105,13 @@ export class DepartmentCardComponent {
   }
 
   // ----- daily plan -----
+  toggleSecondShift(event: Event) {
+    const on = (event.target as HTMLInputElement).checked;
+    const d = this.dept();
+    d.second_shift = on ? 1 : 0; // optimistic
+    this.api.updateDepartment(d.id, { second_shift: d.second_shift }).subscribe();
+  }
+
   saveDay(day: DayPlan) {
     this.api.saveDayPlan(day).subscribe(saved => {
       day.id = saved.id;

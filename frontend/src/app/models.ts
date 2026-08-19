@@ -24,10 +24,20 @@ export interface DayPlan {
   name: string;
   goal: number;
   actual: number;
-  goal_note: string;
+  goal_note: string; // 1st shift plan
+  shift2_plan: string;
   shift1_note: string;
   shift2_note: string;
   comment: string;
+}
+
+/** Bare department row, as stored — no board data attached. */
+export interface DepartmentInfo {
+  id: number;
+  name: string;
+  color: string;
+  sort: number;
+  second_shift: number;
 }
 
 export interface Department {
@@ -35,6 +45,7 @@ export interface Department {
   name: string;
   color: string;
   sort: number;
+  second_shift: number;
   deliverables: Deliverable[];
   days: DayPlan[];
   weekGoal: number;

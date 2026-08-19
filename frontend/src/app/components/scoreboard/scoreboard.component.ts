@@ -35,14 +35,14 @@ interface Tile {
   `,
   styles: [`
     .strip {
-      display: grid; grid-template-columns: 1.3fr repeat(5, 1fr);
+      display: grid; grid-template-columns: 1.3fr repeat(6, 1fr);
       gap: 1px; background: var(--rule);
       border: 1px solid var(--rule); border-radius: 10px; overflow: hidden;
     }
     .tile { background: var(--panel); padding: 0.6rem 0.9rem; position: relative; }
-    .tile.overall { background: #1c2734; color: #fff; }
-    .tile.overall .tile-name { color: #9fb2c5; }
-    .tile.today { box-shadow: inset 0 3px 0 #f5b83d; }
+    .tile.overall { background: var(--brand-darkest); color: #fff; }
+    .tile.overall .tile-name { color: var(--brand-soft); }
+    .tile.today { box-shadow: inset 0 3px 0 var(--accent); }
     .tile-head { display: flex; align-items: center; gap: 0.4rem; }
     .tile-name {
       font-family: var(--display); font-weight: 600; font-size: 0.95rem;

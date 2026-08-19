@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
-  DayPlan, Deliverable, OpCatalogItem, Serial, SuggestionResponse, Week, WeekBoard,
+  DayPlan, Deliverable, DepartmentInfo, OpCatalogItem, Serial, SuggestionResponse, Week, WeekBoard,
 } from './models';
 
 const BASE = '/api';
@@ -51,8 +51,36 @@ export class ApiService {
     return this.http.put<DayPlan>(`${BASE}/day-plans`, body);
   }
 
+  departments(): Observable<DepartmentInfo[]> {
+    return this.http.get<DepartmentInfo[]>(`${BASE}/departments`);
+  }
+
+  createDepartment(body: { name: string; color?: string }): Observable<DepartmentInfo> {
+    return this.http.post<DepartmentInfo>(`${BASE}/departments`, body);
+  }
+
+  updateDepartment(id: number, body: Partial<DepartmentInfo>): Observable<DepartmentInfo> {
+    return this.http.patch<DepartmentInfo>(`${BASE}/departments/${id}`, body);
+  }
+
+  deleteDepartment(id: number): Observable<unknown> {
+    return this.http.delete(`${BASE}/departments/${id}`);
+  }
+
   ops(): Observable<OpCatalogItem[]> {
     return this.http.get<OpCatalogItem[]>(`${BASE}/ops`);
+  }
+
+  createOp(body: Partial<OpCatalogItem>): Observable<OpCatalogItem> {
+    return this.http.post<OpCatalogItem>(`${BASE}/ops`, body);
+  }
+
+  updateOp(id: number, body: Partial<OpCatalogItem>): Observable<OpCatalogItem> {
+    return this.http.patch<OpCatalogItem>(`${BASE}/ops/${id}`, body);
+  }
+
+  deleteOp(id: number): Observable<unknown> {
+    return this.http.delete(`${BASE}/ops/${id}`);
   }
 
   suggestions(): Observable<SuggestionResponse> {

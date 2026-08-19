@@ -55,7 +55,13 @@
 
   <!-- Daily plan -->
   <div class="block">
-    <div class="block-title"><span>Daily plan</span></div>
+    <div class="block-title">
+      <span>Daily plan</span>
+      <label class="shift2-toggle" pTooltip="Show or hide 2nd shift plan rows" tooltipPosition="left">
+        <input type="checkbox" [checked]="!!dept().second_shift" (change)="toggleSecondShift($event)" />
+        <span>2nd shift</span>
+      </label>
+    </div>
     <table class="day-table">
       <thead>
         <tr>
@@ -71,8 +77,21 @@
           <tr [class]="'row-' + dayPct(day)">
             <td class="col-day">{{ day.name.slice(0, 3) }}</td>
             <td class="col-plan">
-              <input class="plan-input" type="text" [(ngModel)]="day.goal_note"
-                     (change)="saveDay(day)" placeholder="e.g. SN 1234 to coat" />
+              @if (dept().second_shift) {
+                <div class="shift-line">
+                  <span class="shift-tag">1st</span>
+                  <input class="plan-input" type="text" [(ngModel)]="day.goal_note"
+                         (change)="saveDay(day)" placeholder="1st shift plan" />
+                </div>
+                <div class="shift-line">
+                  <span class="shift-tag">2nd</span>
+                  <input class="plan-input" type="text" [(ngModel)]="day.shift2_plan"
+                         (change)="saveDay(day)" placeholder="2nd shift plan" />
+                </div>
+              } @else {
+                <input class="plan-input" type="text" [(ngModel)]="day.goal_note"
+                       (change)="saveDay(day)" placeholder="e.g. SN 1234 to coat" />
+              }
             </td>
             <td class="col-num">
               <input class="num-input" type="number" min="0" [(ngModel)]="day.goal" (change)="saveDay(day)" />
@@ -122,8 +141,10 @@
     <div class="dialog-form">
       <label>1st shift</label>
       <textarea rows="2" [(ngModel)]="notesDay.shift1_note" placeholder="What happened on 1st shift"></textarea>
-      <label>2nd shift</label>
-      <textarea rows="2" [(ngModel)]="notesDay.shift2_note" placeholder="What happened on 2nd shift"></textarea>
+      @if (dept().second_shift) {
+        <label>2nd shift</label>
+        <textarea rows="2" [(ngModel)]="notesDay.shift2_note" placeholder="What happened on 2nd shift"></textarea>
+      }
       <label>Comment</label>
       <textarea rows="2" [(ngModel)]="notesDay.comment" placeholder="Anything the team should know"></textarea>
     </div>

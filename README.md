@@ -33,12 +33,35 @@ Open http://localhost:4200. The SQLite database is created and seeded at `backen
 
 **Production:** `cd frontend && npx ng build`, then run the backend — Express serves the built app at http://localhost:3000.
 
+## Microsoft SQL Server setup
+
+All tables use the `WP_` (Weekly Planner) prefix: `WP_departments`, `WP_op_catalog`, `WP_weeks`, `WP_deliverables`, `WP_serials`, `WP_day_plans`, `WP_active_units`. The full schema lives in [backend/scripts/create-tables.sql](backend/scripts/create-tables.sql).
+
+1. Create an empty database on your SQL Server (e.g. `CREATE DATABASE Lineboard;`) and a SQL login the app can use.
+2. Copy the env template and fill in your connection details — `.env` is gitignored, so secrets never land in the repo:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+3. Create the tables (safe to run repeatedly — it only creates what's missing, and prints a per-table `created` / `already existed` checklist):
+   ```bash
+   cd backend
+   npm install
+   npm run db:setup
+   ```
+
+Azure SQL note: keep `MSSQL_ENCRYPT=true` (default). For a local SQL Server with a self-signed certificate, also set `MSSQL_TRUST_SERVER_CERTIFICATE=true`.
+
+Local development currently runs on SQLite with the same `WP_` table names and schema; the Express data layer swaps to the MSSQL connection as the next step once credentials are in place.
+
 ## Structure
 
 ```
 backend/
   src/db.js        # schema + seed (departments, op catalog, sample week, active-unit mock)
   src/server.js    # REST API + suggestion engine + static hosting
+  scripts/create-tables.sql  # SQL Server DDL for all WP_ tables (idempotent)
+  scripts/setup-db.js        # npm run db:setup — creates missing tables, verifies
+  .env.example     # SQL Server connection template (copy to .env)
 frontend/
   src/app/
     pages/board/            # weekly board (week picker, scoreboard, dept grid)

@@ -30,7 +30,7 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
 .empty { color: var(--ink-soft); font-size: 0.85rem; margin: 0.25rem 0; }
 
 .deliverable { padding: 0.4rem 0; }
-.deliverable + .deliverable { border-top: 1px solid #eef0ed; }
+.deliverable + .deliverable { border-top: 1px solid var(--paper); }
 .del-head { display: flex; align-items: center; gap: 0.5rem; }
 .op-code {
   font-family: var(--display); font-weight: 700; font-size: 0.95rem;
@@ -47,8 +47,8 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
   border: none; background: none; color: var(--ink-soft); cursor: pointer;
   padding: 0.3rem; border-radius: 6px;
 }
-.icon-btn:hover { background: #f0f2ef; color: var(--bad); }
-.icon-btn .has-notes { color: #2b5787; }
+.icon-btn:hover { background: var(--paper); color: var(--bad); }
+.icon-btn .has-notes { color: var(--brand); }
 
 .sn-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
 .sn-chip {
@@ -84,12 +84,27 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
 .row-status-bad .col-day { color: var(--bad); }
 .row-status-warn .col-day { color: var(--warn); }
 
+.shift2-toggle {
+  display: flex; align-items: center; gap: 0.35rem;
+  text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 0.78rem;
+  cursor: pointer; user-select: none;
+}
+.shift2-toggle input { accent-color: var(--brand); cursor: pointer; }
+
+.shift-line { display: flex; align-items: center; gap: 0.25rem; }
+.shift-line + .shift-line { margin-top: 2px; }
+.shift-tag {
+  flex: none; width: 1.6rem; text-align: right;
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--ink-soft);
+}
+
 .plan-input {
   width: 100%; border: 1px solid transparent; border-radius: 6px; padding: 0.3rem 0.4rem;
   font: inherit; font-size: 0.85rem; background: transparent;
 }
 .plan-input:hover { border-color: var(--rule); background: #fff; }
-.plan-input:focus { border-color: #33689f; background: #fff; }
+.plan-input:focus { border-color: var(--brand); background: #fff; }
 .num-input {
   width: 100%; text-align: center; border: 1px solid var(--rule); border-radius: 6px;
   padding: 0.28rem 0.2rem; font: inherit; font-size: 0.85rem;

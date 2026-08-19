@@ -8,53 +8,63 @@ const db = new Database(path.join(DATA_DIR, 'planner.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Databases created before the WP_ naming convention used bare table names;
+// rename in place so existing data carries over.
+const LEGACY_TABLES = ['departments', 'op_catalog', 'weeks', 'deliverables', 'serials', 'day_plans', 'active_units'];
+const hasTable = (n) => !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(n);
+for (const t of LEGACY_TABLES) {
+  if (hasTable(t) && !hasTable('WP_' + t)) db.exec(`ALTER TABLE ${t} RENAME TO WP_${t}`);
+}
+
 db.exec(`
-CREATE TABLE IF NOT EXISTS departments (
+CREATE TABLE IF NOT EXISTS WP_departments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#2456E6',
-  sort INTEGER NOT NULL DEFAULT 0
+  color TEXT NOT NULL DEFAULT '#0078a9',
+  sort INTEGER NOT NULL DEFAULT 0,
+  second_shift INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS op_catalog (
+CREATE TABLE IF NOT EXISTS WP_op_catalog (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  department_id INTEGER NOT NULL REFERENCES WP_departments(id) ON DELETE CASCADE,
   op_code TEXT NOT NULL,
   op_name TEXT NOT NULL,
   avg_labor_hours REAL NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS weeks (
+CREATE TABLE IF NOT EXISTS WP_weeks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   week_of TEXT NOT NULL UNIQUE, -- ISO date of the Monday
   label TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS deliverables (
+CREATE TABLE IF NOT EXISTS WP_deliverables (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  week_id INTEGER NOT NULL REFERENCES weeks(id) ON DELETE CASCADE,
-  department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  week_id INTEGER NOT NULL REFERENCES WP_weeks(id) ON DELETE CASCADE,
+  department_id INTEGER NOT NULL REFERENCES WP_departments(id) ON DELETE CASCADE,
   op_code TEXT NOT NULL,
   op_name TEXT NOT NULL,
   goal INTEGER NOT NULL DEFAULT 0,
   sort INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS serials (
+CREATE TABLE IF NOT EXISTS WP_serials (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  deliverable_id INTEGER NOT NULL REFERENCES deliverables(id) ON DELETE CASCADE,
+  deliverable_id INTEGER NOT NULL REFERENCES WP_deliverables(id) ON DELETE CASCADE,
   sn TEXT NOT NULL,
   done INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS day_plans (
+CREATE TABLE IF NOT EXISTS WP_day_plans (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  week_id INTEGER NOT NULL REFERENCES weeks(id) ON DELETE CASCADE,
-  department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
-  day INTEGER NOT NULL, -- 0=Mon .. 4=Fri
+  week_id INTEGER NOT NULL REFERENCES WP_weeks(id) ON DELETE CASCADE,
+  department_id INTEGER NOT NULL REFERENCES WP_departments(id) ON DELETE CASCADE,
+  day INTEGER NOT NULL, -- 0=Mon .. 5=Sat
   goal INTEGER NOT NULL DEFAULT 0,
   actual INTEGER NOT NULL DEFAULT 0,
-  goal_note TEXT NOT NULL DEFAULT '',
+  goal_note TEXT NOT NULL DEFAULT '',      -- 1st shift plan
+  shift2_plan TEXT NOT NULL DEFAULT '',
   shift1_note TEXT NOT NULL DEFAULT '',
   shift2_note TEXT NOT NULL DEFAULT '',
   comment TEXT NOT NULL DEFAULT '',
@@ -62,7 +72,7 @@ CREATE TABLE IF NOT EXISTS day_plans (
 );
 
 -- Mock of the (80% accurate) part-transaction database: where each active unit sits today.
-CREATE TABLE IF NOT EXISTS active_units (
+CREATE TABLE IF NOT EXISTS WP_active_units (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sn TEXT NOT NULL,
   current_op_code TEXT NOT NULL,
@@ -71,17 +81,25 @@ CREATE TABLE IF NOT EXISTS active_units (
 );
 `);
 
+// Columns added after the first release — bring old databases up to date.
+function ensureColumn(table, col, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+ensureColumn('WP_departments', 'second_shift', 'second_shift INTEGER NOT NULL DEFAULT 1');
+ensureColumn('WP_day_plans', 'shift2_plan', "shift2_plan TEXT NOT NULL DEFAULT ''");
+
 function seed() {
-  const count = db.prepare('SELECT COUNT(*) c FROM departments').get().c;
+  const count = db.prepare('SELECT COUNT(*) c FROM WP_departments').get().c;
   if (count > 0) return;
 
-  const insDept = db.prepare('INSERT INTO departments (name, color, sort) VALUES (?,?,?)');
+  const insDept = db.prepare('INSERT INTO WP_departments (name, color, sort) VALUES (?,?,?)');
   const fab = insDept.run('Fabrication', '#0E7C86', 0).lastInsertRowid;
   const mach = insDept.run('Machining', '#2456E6', 1).lastInsertRowid;
   const coat = insDept.run('Coatings Lab', '#7C3AED', 2).lastInsertRowid;
   const qf = insDept.run('Quality & Finishing', '#B45309', 3).lastInsertRowid;
 
-  const insOp = db.prepare('INSERT INTO op_catalog (department_id, op_code, op_name, avg_labor_hours) VALUES (?,?,?,?)');
+  const insOp = db.prepare('INSERT INTO WP_op_catalog (department_id, op_code, op_name, avg_labor_hours) VALUES (?,?,?,?)');
   const ops = [
     [fab, 'Op 105', 'Mold Prep', 6],
     [fab, 'Op 130', 'Casting Pour', 4],
@@ -104,10 +122,10 @@ function seed() {
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   const iso = monday.toISOString().slice(0, 10);
   const label = 'Wk of ' + iso;
-  const weekId = db.prepare('INSERT INTO weeks (week_of, label) VALUES (?,?)').run(iso, label).lastInsertRowid;
+  const weekId = db.prepare('INSERT INTO WP_weeks (week_of, label) VALUES (?,?)').run(iso, label).lastInsertRowid;
 
-  const insDel = db.prepare('INSERT INTO deliverables (week_id, department_id, op_code, op_name, goal, sort) VALUES (?,?,?,?,?,?)');
-  const insSn = db.prepare('INSERT INTO serials (deliverable_id, sn, done) VALUES (?,?,?)');
+  const insDel = db.prepare('INSERT INTO WP_deliverables (week_id, department_id, op_code, op_name, goal, sort) VALUES (?,?,?,?,?,?)');
+  const insSn = db.prepare('INSERT INTO WP_serials (deliverable_id, sn, done) VALUES (?,?,?)');
 
   const mk = (dept, code, name, goal, sns, sort) => {
     const id = insDel.run(weekId, dept, code, name, goal, sort).lastInsertRowid;
@@ -123,7 +141,7 @@ function seed() {
   mk(qf, 'Op 505', 'Optical Polish', 2, [['SN 0979', 1], ['SN 0981', 0]], 0);
   mk(qf, 'Op 610', 'Final Inspection', 2, [['SN 0975', 1], ['SN 0976', 1]], 1);
 
-  const insDay = db.prepare(`INSERT INTO day_plans (week_id, department_id, day, goal, actual, goal_note, shift1_note, shift2_note, comment)
+  const insDay = db.prepare(`INSERT INTO WP_day_plans (week_id, department_id, day, goal, actual, goal_note, shift1_note, shift2_note, comment)
     VALUES (?,?,?,?,?,?,?,?,?)`);
   const dayPlan = {
     [fab]: [
@@ -160,7 +178,7 @@ function seed() {
   }
 
   // Mock active-unit snapshot (the "80% accurate" transaction data)
-  const insUnit = db.prepare('INSERT INTO active_units (sn, current_op_code, hours_at_op, last_txn) VALUES (?,?,?,?)');
+  const insUnit = db.prepare('INSERT INTO WP_active_units (sn, current_op_code, hours_at_op, last_txn) VALUES (?,?,?,?)');
   const units = [
     ['SN 1001', 'Op 260', 6, '2d ago'], ['SN 1002', 'Op 260', 7, '1d ago'],
     ['SN 1003', 'Op 210', 4, '3h ago'], ['SN 1004', 'Op 210', 1, '5d ago'],
