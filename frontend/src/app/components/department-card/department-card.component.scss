@@ -1,12 +1,27 @@
+/*
+  department-card.component.scss — styles for one department card.
+
+  Scoped by Angular's view encapsulation: these selectors only match elements
+  in THIS component's template, so short class names like .card are safe.
+
+  Two conventions to know:
+  - var(--token) values come from the design tokens in styles.scss;
+    var(--dept-color) is set per-card by the template ([style.--dept-color])
+    from the department's stored color.
+  - The .status-* classes referenced by the template (score pill, day rows)
+    are global utilities defined in styles.scss.
+*/
+
 .card {
   background: var(--panel);
   border: 1px solid var(--rule);
   border-radius: 10px;
-  overflow: hidden;
+  overflow: hidden; /* keeps children's square corners inside the rounding */
   display: flex;
   flex-direction: column;
 }
 
+/* ── Header: swatch, name, week score ─────────────────────────────────── */
 .card-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.65rem 0.9rem;
@@ -20,8 +35,9 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
 .score-nums .of { opacity: 0.4; font-weight: 500; margin: 0 0.1rem; }
 .score-pct { padding: 0.1rem 0.5rem; border-radius: 4px; font-family: var(--display); font-weight: 600; }
 
+/* ── Blocks: the Deliverables and Daily plan sections ─────────────────── */
 .block { padding: 0.7rem 0.9rem; }
-.block + .block { border-top: 1px dashed var(--rule); }
+.block + .block { border-top: 1px dashed var(--rule); } /* divider only BETWEEN blocks */
 .block-title {
   display: flex; align-items: center; justify-content: space-between;
   font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
@@ -29,6 +45,7 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
 }
 .empty { color: var(--ink-soft); font-size: 0.85rem; margin: 0.25rem 0; }
 
+/* ── Deliverables ─────────────────────────────────────────────────────── */
 .deliverable { padding: 0.4rem 0; }
 .deliverable + .deliverable { border-top: 1px solid var(--paper); }
 .del-head { display: flex; align-items: center; gap: 0.5rem; }
@@ -38,34 +55,43 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
   background: var(--dept-color, var(--brand)); color: #fff; padding: 0.05rem 0.45rem; border-radius: 4px;
   white-space: nowrap;
 }
+/* flex:1 absorbs leftover width; min-width:0 lets the name actually shrink
+   (flex items refuse to shrink below content size without it), enabling the
+   ellipsis truncation */
 .op-name { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .del-progress { font-size: 0.75rem; color: var(--ink-soft); white-space: nowrap; }
 .icon-btn {
   border: none; background: none; color: var(--ink-soft); cursor: pointer;
   padding: 0.3rem; border-radius: 6px;
 }
-.icon-btn:hover { background: var(--paper); color: var(--bad); }
+.icon-btn:hover { background: var(--paper); color: var(--bad); } /* delete affordance turns red */
 .icon-btn .has-notes { color: var(--brand); }
 
+/* ── SN chips ─────────────────────────────────────────────────────────── */
 .sn-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
 .sn-chip {
   display: inline-flex; align-items: center; gap: 0.3rem;
   border: 1px solid var(--rule); background: #fff; color: var(--ink);
-  border-radius: 999px; padding: 0.2rem 0.6rem; font: inherit; font-size: 0.82rem;
+  border-radius: 999px; /* pill shape: an oversized radius clamps to a capsule */
+  padding: 0.2rem 0.6rem; font: inherit; font-size: 0.82rem;
   cursor: pointer; transition: background 0.12s, border-color 0.12s;
 }
 .sn-chip:hover { border-color: var(--ok); }
+/* grab/grabbing cursors advertise that chips are draggable */
 .sn-chip { cursor: grab; }
 .sn-chip:active { cursor: grabbing; }
 
-/* SN drag & drop targets */
+/* SN drag & drop targets — .drop-target is toggled by the component while a
+   chip drag hovers a valid target */
 .deliverable.drop-target {
   outline: 2px dashed var(--brand); outline-offset: 2px;
   border-radius: 6px; background: var(--brand-tint);
 }
 tr.drop-target td { background: var(--brand-tint); }
+
 .sn-chip.done { background: var(--ok); border-color: var(--ok); color: #fff; }
 .sn-chip .pi { font-size: 0.7rem; }
+/* The × is invisible until the chip is hovered — reduces visual noise */
 .sn-x { opacity: 0; margin-left: 0.1rem; font-weight: 600; }
 .sn-chip:hover .sn-x { opacity: 0.7; }
 .sn-x:hover { opacity: 1; }
@@ -77,6 +103,7 @@ tr.drop-target td { background: var(--brand-tint); }
 .sn-add:hover { border-color: var(--ink-soft); color: var(--ink); }
 .sn-input { width: 6.5rem; background: #fff; }
 
+/* ── Daily plan table ─────────────────────────────────────────────────── */
 .day-table { width: 100%; border-collapse: collapse; }
 .day-table th {
   text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
@@ -86,15 +113,19 @@ tr.drop-target td { background: var(--brand-tint); }
 .col-day { width: 3rem; font-family: var(--display); font-weight: 600; font-size: 0.95rem; }
 .col-num { width: 3.6rem; }
 .col-notes { width: 2.2rem; text-align: right; }
+/* Day-name color follows the row's goal attainment (class set from dayPct()) */
 .row-status-good .col-day { color: var(--ok); }
 .row-status-bad .col-day { color: var(--bad); }
 .row-status-warn .col-day { color: var(--warn); }
 
+/* 2nd-shift toggle sits inside the uppercase block title, so it resets those
+   inherited text styles for its own label */
 .shift2-toggle {
   display: flex; align-items: center; gap: 0.35rem;
   text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 0.78rem;
   cursor: pointer; user-select: none;
 }
+/* accent-color tints a NATIVE checkbox — no custom checkbox rebuild needed */
 .shift2-toggle input { accent-color: var(--brand); cursor: pointer; }
 
 .shift-line { display: flex; align-items: center; gap: 0.25rem; }
@@ -105,6 +136,8 @@ tr.drop-target td { background: var(--brand-tint); }
   letter-spacing: 0.05em; color: var(--ink-soft);
 }
 
+/* Plan inputs are borderless at rest so the table reads as text; the border
+   appears on hover/focus to reveal editability ("quiet input" pattern) */
 .plan-input {
   width: 100%; border: 1px solid transparent; border-radius: 6px; padding: 0.3rem 0.4rem;
   font: inherit; font-size: 0.85rem; background: transparent;
@@ -115,9 +148,10 @@ tr.drop-target td { background: var(--brand-tint); }
   width: 100%; text-align: center; border: 1px solid var(--rule); border-radius: 6px;
   padding: 0.28rem 0.2rem; font: inherit; font-size: 0.85rem;
 }
-.num-input.actual { font-weight: 600; }
+.num-input.actual { font-weight: 600; } /* actuals read heavier than goals */
 .num-input.wide { width: 6rem; text-align: left; padding-left: 0.5rem; }
 
+/* ── Dialog forms (Add op / Notes) ────────────────────────────────────── */
 .dialog-form { display: flex; flex-direction: column; gap: 0.35rem; }
 .dialog-form label {
   font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
@@ -132,8 +166,12 @@ tr.drop-target td { background: var(--brand-tint); }
   letter-spacing: 0; margin-top: 0.35rem;
 }
 .op-hours { color: var(--ink-soft); font-size: 0.78rem; margin-left: 0.4rem; }
+/* Group headers inside the op dropdown (rendered in a body-appended panel,
+   but still scoped: Angular stamps template content with this component's id) */
 .op-group {
   font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--ink-soft);
 }
+/* ::ng-deep pierces encapsulation to reach PrimeNG's internals — kept to one
+   tiny utility and prefixed with :host so it can't leak app-wide */
 :host ::ng-deep .w-full { width: 100%; }

@@ -1,16 +1,32 @@
+<!--
+  department-card.component.html — template for one department's card.
+
+  Angular template syntax quick reference (used throughout):
+    {{ expr }}          interpolation — renders a value as text
+    [prop]="expr"       property binding — data flows INTO the element
+    (event)="handler"   event binding — DOM events call component methods
+    [(ngModel)]="prop"  two-way binding — input value <-> component property
+    @if / @for          built-in control flow (modern *ngIf / *ngFor)
+
+  The [style.--dept-color] binding below sets a CSS custom property from data:
+  the department's stored color flows into the stylesheet, which uses
+  var(--dept-color) for the accent bar and op chips. One template serves every
+  department; only this variable differs.
+-->
 <section class="card" [style.--dept-color]="dept().color">
   <header class="card-head">
     <div class="head-left">
       <span class="dept-swatch"></span>
       <h2>{{ dept().name }}</h2>
     </div>
+    <!-- Server-computed day-plan totals; pctClass() picks the green/amber/red pill -->
     <div class="head-score">
       <span class="score-nums">{{ dept().weekActual }}<span class="of">/</span>{{ dept().weekGoal }}</span>
       <span class="score-pct" [class]="pctClass()">{{ pct() === null ? '—' : pct() + '%' }}</span>
     </div>
   </header>
 
-  <!-- Deliverables -->
+  <!-- Deliverables: the ops this department plans to run this week -->
   <div class="block">
     <div class="block-title">
       <span>Deliverables</span>
@@ -21,6 +37,9 @@
       <p class="empty">No operations planned yet. Add one to start the week.</p>
     }
 
+    <!-- track d.id lets Angular reuse DOM nodes per row when the list changes.
+         Each deliverable is also a drop target: dragging an SN chip here
+         copies that SN onto this op (see dropOnDeliverable). -->
     @for (d of dept().deliverables; track d.id) {
       <div class="deliverable" [class.drop-target]="delOver === d.id"
            (dragover)="allowDelDrop($event, d)" (dragleave)="delLeave(d)"
@@ -28,6 +47,7 @@
         <div class="del-head">
           <span class="op-code">{{ d.op_code }}</span>
           <span class="op-name">{{ d.op_name }}</span>
+          <!-- Progress = serials clicked green / serials added -->
           <span class="del-progress" pTooltip="Serials completed / serials added" tooltipPosition="top">
             {{ snDone(d) }}/{{ d.serials.length }} done
           </span>
@@ -36,15 +56,20 @@
           </button>
         </div>
         <div class="sn-row">
+          <!-- Each chip: click toggles done; draggable starts a copy-drag
+               carrying the SN + op name (see onSnDragStart) -->
           @for (s of d.serials; track s.id) {
             <button class="sn-chip" [class.done]="s.done" (click)="toggleSn(s)"
                     draggable="true" (dragstart)="onSnDragStart($event, s, d)"
                     [pTooltip]="s.done ? 'Completed — click to reopen' : 'Click when completed — drag onto a day or another op'" tooltipPosition="top">
               @if (s.done) { <i class="pi pi-check"></i> }
               {{ s.sn }}
+              <!-- removeSn stops propagation so deleting doesn't also toggle -->
               <span class="sn-x" (click)="removeSn($event, s, d)" role="button" aria-label="Remove serial">×</span>
             </button>
           }
+          <!-- "+ SN" swaps to an inline input while typing (addingSnFor holds
+               which deliverable is in typing mode); Enter or blur commits -->
           @if (addingSnFor() === d.id) {
             <input class="sn-input" type="text" [(ngModel)]="newSn" placeholder="SN 1234"
                    (keyup.enter)="confirmAddSn(d)" (blur)="confirmAddSn(d)" autofocus />
@@ -56,10 +81,12 @@
     }
   </div>
 
-  <!-- Daily plan -->
+  <!-- Daily plan: the Mon-Sat grid that drives every scorecard -->
   <div class="block">
     <div class="block-title">
       <span>Daily plan</span>
+      <!-- Native checkbox persisted per department; hides/shows the 2nd-shift
+           rows below without deleting their data -->
       <label class="shift2-toggle" pTooltip="Show or hide 2nd shift plan rows" tooltipPosition="left">
         <input type="checkbox" [checked]="!!dept().second_shift" (change)="toggleSecondShift($event)" />
         <span>2nd shift</span>
@@ -76,6 +103,9 @@
         </tr>
       </thead>
       <tbody>
+        <!-- Each row is a drop target for SN chips: dropping appends
+             "SN x Op Name" to the plan text (dropOnDay). The row class colors
+             the day name by goal attainment. -->
         @for (day of dept().days; track day.day) {
           <tr [class]="'row-' + dayPct(day)" [class.drop-target]="dayOver === day.day"
               (dragover)="allowDayDrop($event, day)" (dragleave)="dayLeave(day)"
@@ -83,6 +113,8 @@
             <td class="col-day">{{ day.name.slice(0, 3) }}</td>
             <td class="col-plan">
               @if (dept().second_shift) {
+                <!-- Two plan lines when the department runs a 2nd shift.
+                     goal_note is the 1st-shift plan (historic column name). -->
                 <div class="shift-line">
                   <span class="shift-tag">1st</span>
                   <input class="plan-input" type="text" [(ngModel)]="day.goal_note"
@@ -90,6 +122,8 @@
                 </div>
                 <div class="shift-line">
                   <span class="shift-tag">2nd</span>
+                  <!-- This input has its own (drop) so a chip dropped exactly here
+                       lands in the 2nd-shift plan, not the row default -->
                   <input class="plan-input" type="text" [(ngModel)]="day.shift2_plan"
                          (change)="saveDay(day)" placeholder="2nd shift plan"
                          (drop)="dropOnDay($event, day, 'shift2_plan')" />
@@ -99,6 +133,8 @@
                        (change)="saveDay(day)" placeholder="e.g. SN 1234 to coat" />
               }
             </td>
+            <!-- (change) fires on commit (blur/Enter), not per keystroke — one
+                 save per edit, not one per character -->
             <td class="col-num">
               <input class="num-input" type="number" min="0" [(ngModel)]="day.goal" (change)="saveDay(day)" />
             </td>
@@ -108,6 +144,7 @@
             <td class="col-notes">
               <button class="icon-btn" (click)="openNotes(day)"
                       [pTooltip]="hasNotes(day) ? 'Shift notes & comments' : 'Add shift notes'" tooltipPosition="left">
+                <!-- Icon switches between outline/filled to show notes exist -->
                 <i class="pi" [class.pi-comment]="!hasNotes(day)" [class.pi-comments]="hasNotes(day)"
                    [class.has-notes]="hasNotes(day)"></i>
               </button>
@@ -119,11 +156,16 @@
   </div>
 </section>
 
-<!-- Add operation dialog -->
+<!-- Add operation dialog: whole catalog, grouped by department (this card's
+     first). Picking another department's op plans it on THIS card. -->
 <p-dialog [visible]="addOpen()" (visibleChange)="addOpen.set($event)" [modal]="true"
           [header]="'Add operation — ' + dept().name" [style]="{ width: '26rem' }">
   <div class="dialog-form">
     <label>Operation</label>
+    <!-- [group]="true" + optionGroup* renders headers between groups; the
+         #group / #item templates customize both row types. appendTo="body"
+         escapes the dialog's overflow clipping (which is also why .op-code
+         needs its fallback color — see the .scss). -->
     <p-select [options]="groupedOps()" [(ngModel)]="newOp" [group]="true"
               optionGroupLabel="label" optionGroupChildren="items"
               optionLabel="op_code" [filter]="true" filterBy="op_code,op_name"
@@ -144,7 +186,7 @@
   </ng-template>
 </p-dialog>
 
-<!-- Notes dialog -->
+<!-- Notes dialog: binds straight to the day row; Save persists via saveDay -->
 <p-dialog [visible]="notesOpen()" (visibleChange)="notesOpen.set($event)" [modal]="true"
           [header]="notesDay ? dept().name + ' — ' + notesDay.name : ''" [style]="{ width: '30rem' }">
   @if (notesDay) {

@@ -1,3 +1,16 @@
+/**
+ * suggestions.page.ts — the Suggested Plan page: renders what the backend's
+ * suggestion engine proposes and lets the planner push a card onto a week.
+ *
+ * Design point worth copying: the UI is honest about data quality. The
+ * source snapshot is ~80% accurate, so stale units are flagged "verify"
+ * rather than hidden, and the accuracy note is shown up front. Automation
+ * the user can inspect gets trusted; silent automation gets ignored.
+ *
+ * All the math lives server-side (GET /api/suggestions) — this page only
+ * displays results and applies choices, so the heuristic can evolve without
+ * touching frontend code.
+ */
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -101,18 +114,22 @@ export class SuggestionsPage implements OnInit {
   data = signal<SuggestionResponse | null>(null);
   weeks = signal<Week[]>([]);
   targetWeek: Week | null = null;
+  // Which op codes were applied this visit — flips each card's button to
+  // "Added to plan" and disables it, preventing accidental double-adds.
   applied = signal(new Set<string>());
 
   constructor(private api: ApiService) {}
 
   ngOnInit() {
+    // Two independent fetches; each renders as it lands.
     this.api.suggestions().subscribe(d => this.data.set(d));
     this.api.weeks().subscribe(ws => {
       this.weeks.set(ws);
-      this.targetWeek = ws[0] ?? null;
+      this.targetWeek = ws[0] ?? null; // ?? = default only when null/undefined
     });
   }
 
+  /** Push one suggestion onto the chosen week as a deliverable + its SNs. */
   apply(s: Suggestion) {
     if (!this.targetWeek) return;
     this.api.applySuggestion({
@@ -123,6 +140,8 @@ export class SuggestionsPage implements OnInit {
       goal: s.suggested_goal,
       sns: s.queued.map(u => u.sn),
     }).subscribe(() => {
+      // Signals detect changes by reference — mutating the existing Set
+      // wouldn't re-render, so copy, add, and set a NEW Set (immutable update).
       const next = new Set(this.applied());
       next.add(s.op_code);
       this.applied.set(next);

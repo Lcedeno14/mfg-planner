@@ -1,3 +1,21 @@
+/**
+ * settings.page.ts — the Setup page: manage departments and the op catalog.
+ *
+ * Pattern to notice: "edit in place with save-on-change". There is no Save
+ * button for the lists — every input persists on its (change) event (which
+ * fires on blur/Enter, not per keystroke). Failed saves alert() the server's
+ * error message and reload the list, restoring the last-good state — the
+ * rollback half of an optimistic UI.
+ *
+ * Creation goes through dialogs instead, because a half-typed new row has no
+ * id to PATCH against yet; the dialog collects everything, POSTs once, then
+ * reloads the list.
+ *
+ * Changes here shape the whole app: department color/name feed every card,
+ * and catalog edits feed the Add Op picker and the suggestion engine.
+ * Deliverables already on boards are untouched (they snapshot op code/name
+ * at planning time — see the backend comments).
+ */
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -229,12 +247,15 @@ export class SettingsPage implements OnInit {
   }
 
   saveDept(d: DepartmentInfo) {
+    // ngModel already updated the local object (the UI shows the edit);
+    // on failure, alert + reload rolls the list back to server truth.
     this.api.updateDepartment(d.id, { name: d.name, color: d.color }).subscribe({
       error: err => { alert(err?.error?.error ?? 'Could not save'); this.load(); },
     });
   }
 
   removeDept(d: DepartmentInfo) {
+    // Spell out the blast radius: this cascades across every week's board.
     if (!confirm(`Delete ${d.name}? This removes its ops from the catalog and its deliverables and daily plans from every week.`)) return;
     this.api.deleteDepartment(d.id).subscribe(() => this.load());
   }

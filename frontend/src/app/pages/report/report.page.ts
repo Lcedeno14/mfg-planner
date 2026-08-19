@@ -1,3 +1,21 @@
+/**
+ * report.page.ts — the printable weekly report at /report/:id.
+ *
+ * The trick to "print a web page well" is that this is just a normal page
+ * with a second, print-only stylesheet: @media print rules (bottom of the
+ * styles, plus globals in styles.scss) hide the buttons, strip the chrome,
+ * zero the browser's page margins (which suppresses its title/URL
+ * header/footer), and keep sections from splitting across sheets
+ * (break-inside: avoid). window.print() opens the dialog; "Save as PDF"
+ * comes free.
+ *
+ * It reuses the same GET /api/weeks/:id payload as the board — no dedicated
+ * report endpoint, so board and report can never disagree.
+ *
+ * Also shown here: reading a route parameter (ActivatedRoute) and setting
+ * the document title per page (Title service) — which becomes the printed
+ * PDF's default filename.
+ */
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Title } from '@angular/platform-browser';
@@ -189,6 +207,8 @@ export class ReportPage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    // snapshot.paramMap reads the ':id' from /report/:id once, at load —
+    // fine here because navigating to another report remounts the component.
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.api.week(id).subscribe(b => {
       this.board.set(b);
@@ -198,6 +218,8 @@ export class ReportPage implements OnInit, OnDestroy {
     });
   }
 
+  // Lifecycle pair to ngOnInit: runs when the user navigates away.
+  // Restores the app-wide title so other tabs/pages aren't mislabeled.
   ngOnDestroy() {
     this.title.setTitle(ReportPage.APP_TITLE);
   }
