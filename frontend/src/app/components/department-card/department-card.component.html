@@ -163,9 +163,12 @@
     <label>Operation</label>
     <!-- appendTo="body" escapes the dialog's overflow clipping (which is also
          why .op-code needs its fallback color — see the .scss). -->
+    <!-- emptyMessage covers a department with no catalog ops yet (e.g. a newly
+         created one) — "No results found" wouldn't say what to do about it. -->
     <p-select [options]="deptOps()" [(ngModel)]="newOp"
               optionLabel="op_code" [filter]="true" filterBy="op_code,op_name"
-              placeholder="Pick from the op catalog" appendTo="body" styleClass="w-full">
+              placeholder="Pick from the op catalog" appendTo="body" styleClass="w-full"
+              emptyMessage="No ops for this department yet — add them on the Setup page">
       <ng-template #item let-op>
         <span class="op-code">{{ op.op_code }}</span> {{ op.op_name }}
         <span class="op-hours">{{ op.avg_labor_hours }}h avg</span>
