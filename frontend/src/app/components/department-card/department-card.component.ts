@@ -84,6 +84,72 @@ export class DepartmentCardComponent {
     this.api.deleteDeliverable(d.id).subscribe(() => this.changed.emit());
   }
 
+  // ----- SN drag & drop -----
+  /** Custom drag type so day rows and deliverables only react to SN chips. */
+  private static readonly SN_DRAG_TYPE = 'text/x-lineboard-sn';
+
+  dayOver: number | null = null;      // day.day currently hovered by an SN drag
+  delOver: number | null = null;      // deliverable.id currently hovered
+
+  onSnDragStart(e: DragEvent, s: Serial, d: Deliverable) {
+    e.dataTransfer!.setData(DepartmentCardComponent.SN_DRAG_TYPE,
+      JSON.stringify({ sn: s.sn, opName: d.op_name, deliverableId: d.id }));
+    e.dataTransfer!.effectAllowed = 'copy';
+  }
+
+  private isSnDrag(e: DragEvent): boolean {
+    return !!e.dataTransfer?.types.includes(DepartmentCardComponent.SN_DRAG_TYPE);
+  }
+
+  allowDayDrop(e: DragEvent, day: DayPlan) {
+    if (!this.isSnDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'copy';
+    this.dayOver = day.day;
+  }
+
+  dayLeave(day: DayPlan) {
+    if (this.dayOver === day.day) this.dayOver = null;
+  }
+
+  dropOnDay(e: DragEvent, day: DayPlan, field: 'goal_note' | 'shift2_plan' = 'goal_note') {
+    e.preventDefault();
+    e.stopPropagation();
+    this.dayOver = null;
+    const raw = e.dataTransfer?.getData(DepartmentCardComponent.SN_DRAG_TYPE);
+    if (!raw) return;
+    const { sn, opName } = JSON.parse(raw);
+    const entry = opName ? `${sn} ${opName}` : sn;
+    day[field] = day[field] ? `${day[field]}, ${entry}` : entry;
+    this.saveDay(day);
+  }
+
+  allowDelDrop(e: DragEvent, d: Deliverable) {
+    if (!this.isSnDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'copy';
+    this.delOver = d.id;
+  }
+
+  delLeave(d: Deliverable) {
+    if (this.delOver === d.id) this.delOver = null;
+  }
+
+  /** Copy the dragged SN onto another op — the original chip stays where it was. */
+  dropOnDeliverable(e: DragEvent, d: Deliverable) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.delOver = null;
+    const raw = e.dataTransfer?.getData(DepartmentCardComponent.SN_DRAG_TYPE);
+    if (!raw) return;
+    const { sn, deliverableId } = JSON.parse(raw);
+    if (d.id === deliverableId || d.serials.some(x => x.sn === sn)) return;
+    this.api.addSerial(d.id, sn).subscribe(created => {
+      d.serials = [...d.serials, created];
+      this.changed.emit();
+    });
+  }
+
   // ----- serial numbers -----
   toggleSn(s: Serial) {
     s.done = s.done ? 0 : 1; // optimistic

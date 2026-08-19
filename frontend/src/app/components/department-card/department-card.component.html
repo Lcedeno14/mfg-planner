@@ -22,7 +22,9 @@
     }
 
     @for (d of dept().deliverables; track d.id) {
-      <div class="deliverable">
+      <div class="deliverable" [class.drop-target]="delOver === d.id"
+           (dragover)="allowDelDrop($event, d)" (dragleave)="delLeave(d)"
+           (drop)="dropOnDeliverable($event, d)">
         <div class="del-head">
           <span class="op-code">{{ d.op_code }}</span>
           <span class="op-name">{{ d.op_name }}</span>
@@ -36,7 +38,8 @@
         <div class="sn-row">
           @for (s of d.serials; track s.id) {
             <button class="sn-chip" [class.done]="s.done" (click)="toggleSn(s)"
-                    [pTooltip]="s.done ? 'Completed — click to reopen' : 'Click when completed'" tooltipPosition="top">
+                    draggable="true" (dragstart)="onSnDragStart($event, s, d)"
+                    [pTooltip]="s.done ? 'Completed — click to reopen' : 'Click when completed — drag onto a day or another op'" tooltipPosition="top">
               @if (s.done) { <i class="pi pi-check"></i> }
               {{ s.sn }}
               <span class="sn-x" (click)="removeSn($event, s, d)" role="button" aria-label="Remove serial">×</span>
@@ -74,7 +77,9 @@
       </thead>
       <tbody>
         @for (day of dept().days; track day.day) {
-          <tr [class]="'row-' + dayPct(day)">
+          <tr [class]="'row-' + dayPct(day)" [class.drop-target]="dayOver === day.day"
+              (dragover)="allowDayDrop($event, day)" (dragleave)="dayLeave(day)"
+              (drop)="dropOnDay($event, day)">
             <td class="col-day">{{ day.name.slice(0, 3) }}</td>
             <td class="col-plan">
               @if (dept().second_shift) {
@@ -86,7 +91,8 @@
                 <div class="shift-line">
                   <span class="shift-tag">2nd</span>
                   <input class="plan-input" type="text" [(ngModel)]="day.shift2_plan"
-                         (change)="saveDay(day)" placeholder="2nd shift plan" />
+                         (change)="saveDay(day)" placeholder="2nd shift plan"
+                         (drop)="dropOnDay($event, day, 'shift2_plan')" />
                 </div>
               } @else {
                 <input class="plan-input" type="text" [(ngModel)]="day.goal_note"

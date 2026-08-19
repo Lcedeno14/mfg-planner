@@ -55,6 +55,15 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
   cursor: pointer; transition: background 0.12s, border-color 0.12s;
 }
 .sn-chip:hover { border-color: var(--ok); }
+.sn-chip { cursor: grab; }
+.sn-chip:active { cursor: grabbing; }
+
+/* SN drag & drop targets */
+.deliverable.drop-target {
+  outline: 2px dashed var(--brand); outline-offset: 2px;
+  border-radius: 6px; background: var(--brand-tint);
+}
+tr.drop-target td { background: var(--brand-tint); }
 .sn-chip.done { background: var(--ok); border-color: var(--ok); color: #fff; }
 .sn-chip .pi { font-size: 0.7rem; }
 .sn-x { opacity: 0; margin-left: 0.1rem; font-weight: 600; }
