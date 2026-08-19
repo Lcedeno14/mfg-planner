@@ -31,7 +31,33 @@ npx ng serve
 
 Open http://localhost:4200. The SQLite database is created and seeded at `backend/data/planner.db` on first run (delete it to re-seed).
 
-**Production:** `cd frontend && npx ng build`, then run the backend — Express serves the built app at http://localhost:3000.
+**Production:** `cd frontend && npx ng build`, then run the backend — Express serves the built app at http://localhost:3000. Open **:3000**, not :4200, and re-run `ng build` after any frontend change (production serves the compiled files, not your source).
+
+### How the two servers fit together
+
+In development there are two processes, and the browser only ever talks to the first one:
+
+```
+browser ──▶ :4200  ng serve   UI files, rebuilds on save
+                │
+                │  requests starting with /api are forwarded
+                ▼
+            :3000  Express     the API and the database
+```
+
+The frontend asks for `/api/...` — a relative URL with no host or port (see `BASE` in `frontend/src/app/api.service.ts`). On its own that would hit :4200, which holds no data. `frontend/proxy.conf.json` tells the dev server to forward anything under `/api` to the backend:
+
+```json
+{ "/api": { "target": "http://localhost:3000", "secure": false } }
+```
+
+That keeps the port out of the frontend code, so the same code works in production — where there is only **one** server: `ng build` compiles the UI into `frontend/dist`, Express serves those files alongside the API, `/api` is same-origin, and the proxy is never used.
+
+Three things that bite people:
+
+- **The backend must be running**, or the UI loads with every panel empty — the data requests are forwarded into nothing. Start it first.
+- **`proxy.conf.json` is read once, when `ng serve` starts.** Editing it while the dev server is running changes nothing until you restart it.
+- **Its target must match the port the backend is actually on.** They are both 3000 by default; change one and you must change the other.
 
 ## Microsoft SQL Server setup
 
