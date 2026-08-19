@@ -69,14 +69,14 @@ import { DayPlan, Department, WeekBoard } from '../../models';
             @if (dept.deliverables.length) {
               <table class="del-table">
                 <thead>
-                  <tr><th class="op">Op</th><th>Operation</th><th class="num">Done/Goal</th><th>Serial numbers</th></tr>
+                  <tr><th class="op">Op</th><th>Operation</th><th class="num">Done/SNs</th><th>Serial numbers</th></tr>
                 </thead>
                 <tbody>
                   @for (d of dept.deliverables; track d.id) {
                     <tr>
                       <td class="op">{{ d.op_code }}</td>
                       <td>{{ d.op_name }}</td>
-                      <td class="num">{{ doneCount(d.serials) }}/{{ d.goal }}</td>
+                      <td class="num">{{ doneCount(d.serials) }}/{{ d.serials.length }}</td>
                       <td class="sns">
                         @for (s of d.serials; track s.id; let last = $last) {
                           <span [class.done]="s.done">{{ s.sn }}@if (s.done) {&nbsp;&#10003;}</span>@if (!last) {, }

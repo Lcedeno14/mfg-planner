@@ -22,7 +22,6 @@ export class DepartmentCardComponent {
 
   addOpen = signal(false);
   newOp: OpCatalogItem | null = null;
-  newGoal = 1;
 
   notesOpen = signal(false);
   notesDay: DayPlan | null = null;
@@ -67,7 +66,6 @@ export class DepartmentCardComponent {
   // ----- deliverables -----
   openAdd() {
     this.newOp = null;
-    this.newGoal = 1;
     this.addOpen.set(true);
   }
 
@@ -78,12 +76,7 @@ export class DepartmentCardComponent {
       department_id: this.dept().id,
       op_code: this.newOp.op_code,
       op_name: this.newOp.op_name,
-      goal: this.newGoal,
     }).subscribe(() => { this.addOpen.set(false); this.changed.emit(); });
-  }
-
-  saveGoal(d: Deliverable) {
-    this.api.updateDeliverable(d.id, { goal: d.goal }).subscribe(() => this.changed.emit());
   }
 
   removeDeliverable(d: Deliverable) {

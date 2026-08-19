@@ -26,7 +26,9 @@ function weekPayload(weekId) {
       const dp = dayPlans.find(p => p.department_id === dep.id && p.day === i) || null;
       return dp ? { ...dp, name } : { id: null, week_id: weekId, department_id: dep.id, day: i, name, goal: 0, actual: 0, goal_note: '', shift2_plan: '', shift1_note: '', shift2_note: '', comment: '' };
     });
-    const weekGoal = dels.reduce((a, d) => a + d.goal, 0);
+    // Department scorecard is driven by the daily plan only; deliverable
+    // progress is tracked separately through serial-number completion.
+    const weekGoal = days.reduce((a, d) => a + d.goal, 0);
     const weekActual = days.reduce((a, d) => a + d.actual, 0);
     return { ...dep, deliverables: dels, days, weekGoal, weekActual };
   });

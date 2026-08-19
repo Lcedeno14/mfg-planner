@@ -26,9 +26,9 @@
         <div class="del-head">
           <span class="op-code">{{ d.op_code }}</span>
           <span class="op-name">{{ d.op_name }}</span>
-          <span class="del-progress">{{ snDone(d) }}/{{ d.goal }} done</span>
-          <input class="goal-input" type="number" min="0" [(ngModel)]="d.goal"
-                 (change)="saveGoal(d)" aria-label="Weekly goal" pTooltip="Weekly goal" tooltipPosition="top" />
+          <span class="del-progress" pTooltip="Serials completed / serials added" tooltipPosition="top">
+            {{ snDone(d) }}/{{ d.serials.length }} done
+          </span>
           <button class="icon-btn" (click)="removeDeliverable(d)" aria-label="Remove operation">
             <i class="pi pi-trash"></i>
           </button>
@@ -130,8 +130,7 @@
         <span class="op-hours">{{ op.avg_labor_hours }}h avg</span>
       </ng-template>
     </p-select>
-    <label>Weekly goal</label>
-    <input class="num-input wide" type="number" min="0" [(ngModel)]="newGoal" />
+    <small class="dialog-hint">Progress is tracked by serial numbers — add SNs to the operation and click each one green as it completes.</small>
   </div>
   <ng-template #footer>
     <p-button label="Cancel" text (onClick)="addOpen.set(false)" />
