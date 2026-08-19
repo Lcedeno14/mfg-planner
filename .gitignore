@@ -5,4 +5,3 @@ backend/server.log
 .angular/
 *.log
 .env
-.claude/

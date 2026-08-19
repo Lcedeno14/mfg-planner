@@ -118,8 +118,13 @@
           [header]="'Add operation — ' + dept().name" [style]="{ width: '26rem' }">
   <div class="dialog-form">
     <label>Operation</label>
-    <p-select [options]="deptOps()" [(ngModel)]="newOp" optionLabel="op_code" [filter]="true"
+    <p-select [options]="groupedOps()" [(ngModel)]="newOp" [group]="true"
+              optionGroupLabel="label" optionGroupChildren="items"
+              optionLabel="op_code" [filter]="true" filterBy="op_code,op_name"
               placeholder="Pick from the op catalog" appendTo="body" styleClass="w-full">
+      <ng-template #group let-g>
+        <span class="op-group">{{ g.label }}</span>
+      </ng-template>
       <ng-template #item let-op>
         <span class="op-code">{{ op.op_code }}</span> {{ op.op_name }}
         <span class="op-hours">{{ op.avg_labor_hours }}h avg</span>

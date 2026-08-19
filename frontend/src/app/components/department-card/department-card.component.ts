@@ -30,7 +30,22 @@ export class DepartmentCardComponent {
   addingSnFor = signal<number | null>(null);
   newSn = '';
 
-  deptOps = computed(() => this.ops().filter(o => o.department_id === this.dept().id));
+  /** Whole op catalog grouped by department, this card's department first —
+   *  a card can plan an op borrowed from another department's catalog. */
+  groupedOps = computed(() => {
+    const groups = new Map<number, { label: string; items: OpCatalogItem[] }>();
+    for (const op of this.ops()) {
+      if (!groups.has(op.department_id)) groups.set(op.department_id, { label: op.department_name, items: [] });
+      groups.get(op.department_id)!.items.push(op);
+    }
+    const mine = this.dept().id;
+    return [...groups.entries()]
+      .sort(([aId, a], [bId, b]) => (aId === mine ? -1 : bId === mine ? 1 : a.label.localeCompare(b.label)))
+      .map(([, g]) => ({
+        ...g,
+        items: g.items.sort((a, b) => a.op_code.localeCompare(b.op_code, undefined, { numeric: true })),
+      }));
+  });
 
   constructor(private api: ApiService) {}
 

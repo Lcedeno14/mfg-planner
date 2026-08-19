@@ -34,7 +34,8 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
 .del-head { display: flex; align-items: center; gap: 0.5rem; }
 .op-code {
   font-family: var(--display); font-weight: 700; font-size: 0.95rem;
-  background: var(--dept-color); color: #fff; padding: 0.05rem 0.45rem; border-radius: 4px;
+  /* Fallback: dropdown panels are appended to <body>, outside the card's --dept-color scope */
+  background: var(--dept-color, var(--brand)); color: #fff; padding: 0.05rem 0.45rem; border-radius: 4px;
   white-space: nowrap;
 }
 .op-name { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -122,4 +123,8 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; text-transform: uppercase;
   font: inherit; font-size: 0.85rem; resize: vertical;
 }
 .op-hours { color: var(--ink-soft); font-size: 0.78rem; margin-left: 0.4rem; }
+.op-group {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-soft);
+}
 :host ::ng-deep .w-full { width: 100%; }
