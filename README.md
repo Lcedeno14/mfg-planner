@@ -51,7 +51,22 @@ All tables use the `WP_` (Weekly Planner) prefix: `WP_departments`, `WP_op_catal
 
 Azure SQL note: keep `MSSQL_ENCRYPT=true` (default). For a local SQL Server with a self-signed certificate, also set `MSSQL_TRUST_SERVER_CERTIFICATE=true`.
 
-Local development currently runs on SQLite with the same `WP_` table names and schema; the Express data layer swaps to the MSSQL connection as the next step once credentials are in place.
+### Migrating your SQLite data
+
+Local development runs on SQLite (`backend/data/planner.db`) with the same `WP_` table names and schema, so moving your existing weeks into SQL Server is one command:
+
+```bash
+cd backend
+npm run db:migrate -- --dry-run   # preview what would be copied (no MSSQL needed)
+npm run db:migrate                # copy everything into the WP_ tables
+```
+
+- IDs are preserved, so every serial number, deliverable, and day plan keeps its links.
+- The whole migration runs in a single transaction — it either completes fully or leaves SQL Server untouched.
+- It refuses to run into non-empty `WP_` tables; add `--force` to wipe them and migrate fresh.
+- Safe order of operations: `npm run db:setup` first (creates tables), then `npm run db:migrate`.
+
+After migrating, the remaining step is switching the Express data layer from `better-sqlite3` to the `mssql` connection (both packages are already installed; the queries and table names are identical).
 
 ## Structure
 
@@ -61,6 +76,7 @@ backend/
   src/server.js    # REST API + suggestion engine + static hosting
   scripts/create-tables.sql  # SQL Server DDL for all WP_ tables (idempotent)
   scripts/setup-db.js        # npm run db:setup — creates missing tables, verifies
+  scripts/migrate-sqlite-to-mssql.js  # npm run db:migrate — SQLite data -> MSSQL
   .env.example     # SQL Server connection template (copy to .env)
 frontend/
   src/app/

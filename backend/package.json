@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "db:setup": "node scripts/setup-db.js",
+    "db:migrate": "node scripts/migrate-sqlite-to-mssql.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
