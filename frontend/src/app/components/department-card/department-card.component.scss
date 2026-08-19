@@ -166,12 +166,6 @@ tr.drop-target td { background: var(--brand-tint); }
   letter-spacing: 0; margin-top: 0.35rem;
 }
 .op-hours { color: var(--ink-soft); font-size: 0.78rem; margin-left: 0.4rem; }
-/* Group headers inside the op dropdown (rendered in a body-appended panel,
-   but still scoped: Angular stamps template content with this component's id) */
-.op-group {
-  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--ink-soft);
-}
 /* ::ng-deep pierces encapsulation to reach PrimeNG's internals — kept to one
    tiny utility and prefixed with :host so it can't leak app-wide */
 :host ::ng-deep .w-full { width: 100%; }

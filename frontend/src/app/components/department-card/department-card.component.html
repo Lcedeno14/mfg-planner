@@ -156,23 +156,16 @@
   </div>
 </section>
 
-<!-- Add operation dialog: whole catalog, grouped by department (this card's
-     first). Picking another department's op plans it on THIS card. -->
+<!-- Add operation dialog: only THIS department's ops are offered -->
 <p-dialog [visible]="addOpen()" (visibleChange)="addOpen.set($event)" [modal]="true"
           [header]="'Add operation — ' + dept().name" [style]="{ width: '26rem' }">
   <div class="dialog-form">
     <label>Operation</label>
-    <!-- [group]="true" + optionGroup* renders headers between groups; the
-         #group / #item templates customize both row types. appendTo="body"
-         escapes the dialog's overflow clipping (which is also why .op-code
-         needs its fallback color — see the .scss). -->
-    <p-select [options]="groupedOps()" [(ngModel)]="newOp" [group]="true"
-              optionGroupLabel="label" optionGroupChildren="items"
+    <!-- appendTo="body" escapes the dialog's overflow clipping (which is also
+         why .op-code needs its fallback color — see the .scss). -->
+    <p-select [options]="deptOps()" [(ngModel)]="newOp"
               optionLabel="op_code" [filter]="true" filterBy="op_code,op_name"
               placeholder="Pick from the op catalog" appendTo="body" styleClass="w-full">
-      <ng-template #group let-g>
-        <span class="op-group">{{ g.label }}</span>
-      </ng-template>
       <ng-template #item let-op>
         <span class="op-code">{{ op.op_code }}</span> {{ op.op_name }}
         <span class="op-hours">{{ op.avg_labor_hours }}h avg</span>

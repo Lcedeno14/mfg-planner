@@ -56,27 +56,13 @@ export class DepartmentCardComponent {
   addingSnFor = signal<number | null>(null);
   newSn = '';
 
-  /** Whole op catalog grouped by department, this card's department first —
-   *  a card can plan an op borrowed from another department's catalog. */
-  groupedOps = computed(() => {
-    // Map preserves insertion order and allows any key type — the natural
-    // pick for a group-by keyed on numeric department ids.
-    const groups = new Map<number, { label: string; items: OpCatalogItem[] }>();
-    for (const op of this.ops()) {
-      if (!groups.has(op.department_id)) groups.set(op.department_id, { label: op.department_name, items: [] });
-      groups.get(op.department_id)!.items.push(op); // ! = "trust me, it exists" (just set above)
-    }
-    const mine = this.dept().id;
-    return [...groups.entries()]
-      // Own department first, then the rest alphabetically. localeCompare
-      // returns 0 on ties, so || falls through to the next criterion.
-      .sort(([aId, a], [bId, b]) => (aId === mine ? -1 : bId === mine ? 1 : a.label.localeCompare(b.label)))
-      .map(([, g]) => ({
-        ...g,
-        // { numeric: true } sorts "Op 9" before "Op 105" (string sort wouldn't)
-        items: g.items.sort((a, b) => a.op_code.localeCompare(b.op_code, undefined, { numeric: true })),
-      }));
-  });
+  /** This department's slice of the op catalog, in numeric op-code order —
+   *  the Add Op picker only offers ops that belong to this card's department. */
+  deptOps = computed(() =>
+    this.ops()
+      .filter(o => o.department_id === this.dept().id)
+      // { numeric: true } sorts "Op 9" before "Op 105" (string sort wouldn't)
+      .sort((a, b) => a.op_code.localeCompare(b.op_code, undefined, { numeric: true })));
 
   constructor(private api: ApiService) {}
 
