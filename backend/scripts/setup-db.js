@@ -3,48 +3,38 @@
  *
  * Usage:  npm run db:setup      (from backend/, after filling in backend/.env)
  *
- * Reads connection settings from backend/.env — see .env.example. Safe to run
- * repeatedly: create-tables.sql only creates tables that don't exist yet.
+ * Connection settings come from backend/.env via the same buildConfig() the
+ * server uses (src/db.js), so anything that connects here will connect when
+ * you run `npm start`. Safe to run repeatedly: create-tables.sql only creates
+ * objects that don't exist yet.
  */
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true });
 const sql = require('mssql');
-
-const EXPECTED_TABLES = [
-  'WP_departments', 'WP_op_catalog', 'WP_weeks', 'WP_deliverables',
-  'WP_serials', 'WP_day_plans', 'WP_active_units',
-];
-
-const REQUIRED_ENV = ['MSSQL_SERVER', 'MSSQL_DATABASE', 'MSSQL_USER', 'MSSQL_PASSWORD'];
+const db = require('../src/db');
 
 async function main() {
-  const missing = REQUIRED_ENV.filter(k => !process.env[k]);
-  if (missing.length) {
-    console.error(`Missing environment variables: ${missing.join(', ')}`);
-    console.error('Copy backend/.env.example to backend/.env and fill in your database settings.');
+  let config;
+  try {
+    config = db.buildConfig();
+  } catch (err) {
+    console.error(err.message);
     process.exit(1);
   }
 
-  const config = {
-    server: process.env.MSSQL_SERVER,
-    port: Number(process.env.MSSQL_PORT || 1433),
-    database: process.env.MSSQL_DATABASE,
-    user: process.env.MSSQL_USER,
-    password: process.env.MSSQL_PASSWORD,
-    options: {
-      encrypt: process.env.MSSQL_ENCRYPT !== 'false', // default on (required by Azure SQL)
-      trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERTIFICATE === 'true',
-    },
-  };
-
-  console.log(`Connecting to ${config.server}:${config.port} / ${config.database} as ${config.user} ...`);
+  console.log(`Connecting to ${db.describeTarget()} ...`);
   let pool;
   try {
-    pool = await sql.connect(config);
+    pool = await new sql.ConnectionPool(config).connect();
   } catch (err) {
-    console.error(`Could not connect: ${err.message}`);
-    console.error('Check backend/.env, that the server allows SQL logins, and that the database exists.');
+    console.error(`\nCould not connect: ${err.message}`);
+    console.error('\nThings to check:');
+    console.error('  - the values in backend/.env (server, database, user, password)');
+    console.error('  - the database exists — this script creates TABLES, not the database itself');
+    console.error('  - for a named instance, set MSSQL_INSTANCE and leave MSSQL_PORT unset');
+    console.error('  - for an internal/self-signed certificate, set MSSQL_TRUST_SERVER_CERTIFICATE=true');
+    console.error('  - that the login has permission to create tables in this database\n');
     process.exit(1);
   }
 
@@ -53,24 +43,32 @@ async function main() {
   // create-tables.sql is split on GO (a client-side batch separator, not T-SQL).
   const ddl = fs.readFileSync(path.join(__dirname, 'create-tables.sql'), 'utf8');
   const batches = ddl.split(/^\s*GO\s*$/m).map(b => b.trim()).filter(Boolean);
-  for (const batch of batches) {
-    await pool.request().batch(batch);
+  try {
+    for (const batch of batches) {
+      await pool.request().batch(batch);
+    }
+  } catch (err) {
+    console.error(`\nFailed while creating tables: ${err.message}`);
+    console.error('If this mentions permissions, the login needs CREATE TABLE rights on this database.\n');
+    await pool.close();
+    process.exit(1);
   }
 
   const after = await listTables(pool);
   console.log('');
-  for (const t of EXPECTED_TABLES) {
+  for (const t of db.EXPECTED_TABLES) {
     const status = !after.includes(t) ? 'MISSING?!' : before.includes(t) ? 'already existed' : 'created';
     console.log(`  ${t.padEnd(18)} ${status}`);
   }
 
-  const stillMissing = EXPECTED_TABLES.filter(t => !after.includes(t));
+  const stillMissing = db.EXPECTED_TABLES.filter(t => !after.includes(t));
   await pool.close();
   if (stillMissing.length) {
     console.error(`\nSomething went wrong — missing tables: ${stillMissing.join(', ')}`);
     process.exit(1);
   }
   console.log('\nAll Weekly Planner tables are in place.');
+  console.log('Next: "npm run db:seed" for sample data (optional), then "npm start".');
 }
 
 async function listTables(pool) {

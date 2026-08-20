@@ -33,9 +33,22 @@ function readSqlite() {
   const dbPath = path.join(__dirname, '..', 'data', 'planner.db');
   if (!fs.existsSync(dbPath)) {
     console.error(`No SQLite database found at ${dbPath} — nothing to migrate.`);
+    console.error('This script only exists to carry data over from the old SQLite build.');
     process.exit(1);
   }
-  const sqlite = require('better-sqlite3')(dbPath, { readonly: true });
+  // better-sqlite3 is an OPTIONAL dependency: it compiles native code, which
+  // needs build tools that a locked-down machine may not have. The app itself
+  // never uses it, so a failed/skipped install must not break anything — only
+  // this one script needs it, and only if you actually have a legacy file.
+  let Database;
+  try {
+    Database = require('better-sqlite3');
+  } catch {
+    console.error('This script needs the better-sqlite3 package, which is not installed.');
+    console.error('Install it just for the migration:  npm install better-sqlite3');
+    process.exit(1);
+  }
+  const sqlite = Database(dbPath, { readonly: true });
   const data = {};
   for (const t of TABLES) {
     data[t.name] = sqlite.prepare(`SELECT ${t.cols.join(', ')} FROM ${t.name} ORDER BY id`).all();
@@ -53,25 +66,18 @@ async function main() {
     return;
   }
 
-  const missing = ['MSSQL_SERVER', 'MSSQL_DATABASE', 'MSSQL_USER', 'MSSQL_PASSWORD'].filter(k => !process.env[k]);
-  if (missing.length) {
-    console.error(`\nMissing environment variables: ${missing.join(', ')}`);
-    console.error('Copy backend/.env.example to backend/.env and fill in your database settings.');
+  const sql = require('mssql');
+  const db = require('../src/db');
+  // Same connection settings as the server and the setup script.
+  let config;
+  try {
+    config = db.buildConfig();
+  } catch (err) {
+    console.error('\n' + err.message);
     process.exit(1);
   }
-
-  const sql = require('mssql');
-  const pool = await sql.connect({
-    server: process.env.MSSQL_SERVER,
-    port: Number(process.env.MSSQL_PORT || 1433),
-    database: process.env.MSSQL_DATABASE,
-    user: process.env.MSSQL_USER,
-    password: process.env.MSSQL_PASSWORD,
-    options: {
-      encrypt: process.env.MSSQL_ENCRYPT !== 'false',
-      trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERTIFICATE === 'true',
-    },
-  });
+  console.log(`\nConnecting to ${db.describeTarget()} ...`);
+  const pool = await new sql.ConnectionPool(config).connect();
 
   // Never silently merge into existing data.
   const counts = {};

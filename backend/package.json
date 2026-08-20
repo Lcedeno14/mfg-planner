@@ -19,7 +19,7 @@
     "express": "^5.2.1",
     "mssql": "^12.7.0"
   },
-  "devDependencies": {
+  "optionalDependencies": {
     "better-sqlite3": "^13.0.3"
   }
 }

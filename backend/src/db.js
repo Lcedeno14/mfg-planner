@@ -35,6 +35,19 @@ const sql = require('mssql');
 // same build runs against a developer's container and a production server.
 const REQUIRED_ENV = ['MSSQL_SERVER', 'MSSQL_DATABASE', 'MSSQL_USER', 'MSSQL_PASSWORD'];
 
+/**
+ * Builds the driver config from environment variables.
+ *
+ * Exported so the setup, seed and migration scripts connect exactly the same
+ * way the server does — one place to get connection details right, so a
+ * setting that works for `npm run db:setup` also works for `npm start`.
+ *
+ * Corporate SQL Server installations usually differ from a plain localhost in
+ * one of three ways, all handled here:
+ *   - a NAMED INSTANCE (SERVER\SQLEXPRESS) rather than a port — set MSSQL_INSTANCE
+ *   - WINDOWS/domain accounts rather than SQL logins — set MSSQL_DOMAIN
+ *   - encryption with an internal certificate — set MSSQL_TRUST_SERVER_CERTIFICATE=true
+ */
 function buildConfig() {
   const missing = REQUIRED_ENV.filter(k => !process.env[k]);
   if (missing.length) {
@@ -43,18 +56,50 @@ function buildConfig() {
       'Copy backend/.env.example to backend/.env and fill in your database settings.'
     );
   }
-  return {
+
+  const options = {
+    // Encryption defaults ON: required by Azure SQL and by most modern
+    // on-prem servers. Set MSSQL_ENCRYPT=false only if the server refuses TLS.
+    encrypt: process.env.MSSQL_ENCRYPT !== 'false',
+    // Needed when the server presents a self-signed/internal certificate,
+    // which is the norm for on-prem SQL Server.
+    trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERTIFICATE === 'true',
+  };
+
+  // Named instance (e.g. MSSQL_SERVER=SQLPROD01, MSSQL_INSTANCE=SQLEXPRESS).
+  // The SQL Browser service resolves the instance to its port, so a port must
+  // NOT also be supplied — passing both makes the driver ignore the instance.
+  if (process.env.MSSQL_INSTANCE) options.instanceName = process.env.MSSQL_INSTANCE;
+
+  const config = {
     server: process.env.MSSQL_SERVER,
-    port: Number(process.env.MSSQL_PORT || 1433),
     database: process.env.MSSQL_DATABASE,
     user: process.env.MSSQL_USER,
     password: process.env.MSSQL_PASSWORD,
-    options: {
-      encrypt: process.env.MSSQL_ENCRYPT !== 'false', // default on (required by Azure SQL)
-      trustServerCertificate: process.env.MSSQL_TRUST_SERVER_CERTIFICATE === 'true',
-    },
+    options,
+    // Corporate networks and VPNs are slower than localhost; 15s beats the
+    // driver's default so a slow first connection isn't mistaken for a failure.
+    connectionTimeout: Number(process.env.MSSQL_CONNECTION_TIMEOUT || 15000),
+    requestTimeout: Number(process.env.MSSQL_REQUEST_TIMEOUT || 15000),
     pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
   };
+
+  if (!process.env.MSSQL_INSTANCE) config.port = Number(process.env.MSSQL_PORT || 1433);
+  // Windows/Active Directory account: DOMAIN\user authenticates over NTLM.
+  if (process.env.MSSQL_DOMAIN) config.domain = process.env.MSSQL_DOMAIN;
+
+  return config;
+}
+
+/** Human-readable description of what we're connecting to (never logs the password). */
+function describeTarget() {
+  const where = process.env.MSSQL_INSTANCE
+    ? `${process.env.MSSQL_SERVER}\\${process.env.MSSQL_INSTANCE}`
+    : `${process.env.MSSQL_SERVER}:${process.env.MSSQL_PORT || 1433}`;
+  const who = process.env.MSSQL_DOMAIN
+    ? `${process.env.MSSQL_DOMAIN}\\${process.env.MSSQL_USER}`
+    : process.env.MSSQL_USER;
+  return `${where} / ${process.env.MSSQL_DATABASE} as ${who}`;
 }
 
 let pool = null;
@@ -175,4 +220,7 @@ async function verifySchema() {
   }
 }
 
-module.exports = { sql, connect, close, all, get, run, insert, withTransaction, verifySchema };
+module.exports = {
+  sql, connect, close, all, get, run, insert, withTransaction, verifySchema,
+  buildConfig, describeTarget, EXPECTED_TABLES,
+};

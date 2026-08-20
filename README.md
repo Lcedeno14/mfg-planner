@@ -13,33 +13,67 @@ A weekly planning board for a multi-department manufacturing line, replacing the
 
 All op codes, departments, and serial numbers are made-up examples.
 
-## Run it
+## Setting up on a new machine
 
-Requires Node 20+ and a reachable Microsoft SQL Server database. Set the database up first (see [Microsoft SQL Server setup](#microsoft-sql-server-setup) below) — the API refuses to start without it.
+Everything the app needs comes from `backend/.env`. Nothing else is machine-specific — no Docker, no local database file, no build tools.
 
 ```bash
-# One time — database connection + tables
+git clone <this repo>
+cd mfg-planner
+
+# 1. Backend deps + your database connection
 cd backend
 npm install
-cp .env.example .env      # fill in your SQL Server details
-npm run db:setup          # creates the WP_ tables
-npm run db:seed           # optional: sample week of demo data
+cp .env.example .env          # fill in server, database, user, password
+npm run db:setup              # creates the WP_ tables in that database
+npm run db:seed               # OPTIONAL — sample data; skip on a real database
 
+# 2. Frontend deps
+cd ../frontend
+npm install
+```
+
+Then run it in whichever mode you want (below). A few things worth knowing:
+
+- **The database must already exist.** `db:setup` creates the *tables*, not the database — ask your DBA for an empty database, or `CREATE DATABASE Lineboard;` if you have rights.
+- **Skip `db:seed` on a real database.** It inserts invented departments; it refuses to run once any departments exist, and the app is perfectly usable empty — add your departments and ops on the **Setup** page.
+- **`better-sqlite3` is an optional dependency** and is not used at runtime. It compiles native code, so if a locked-down machine can't build it, `npm install` still succeeds and the app runs fine. Only `npm run db:migrate` needs it.
+- **Common connection settings** — named instances, Windows/domain logins and self-signed certificates are all covered in the comments in `.env.example`.
+
+## Run it
+
+Requires Node 20+ and a reachable Microsoft SQL Server database (see the setup above).
+
+**Development** — two terminals, live reload on save:
+
+```bash
 # Terminal 1 — API (port 3000)
-cd backend
-npm start
+cd backend && npm start
 
 # Terminal 2 — Angular dev server (port 4200, proxies /api to 3000)
-cd frontend
-npm install
-npx ng serve
+cd frontend && npx ng serve
 ```
 
 Open http://localhost:4200.
 
-The API checks its connection and schema at startup, so misconfiguration fails immediately with a message telling you what to fix, rather than surfacing as broken requests later.
+**Production** — one process serves everything:
 
-**Production:** `cd frontend && npx ng build`, then run the backend — Express serves the built app at http://localhost:3000. Open **:3000**, not :4200, and re-run `ng build` after any frontend change (production serves the compiled files, not your source).
+```bash
+cd frontend && npx ng build     # compiles the UI into frontend/dist
+cd ../backend && npm start      # serves the UI *and* the API on :3000
+```
+
+Open http://localhost:**3000** (not :4200). Re-run `ng build` after any frontend change — production serves the compiled files, not your source.
+
+The API checks its connection and schema at startup, so misconfiguration fails immediately with a message telling you what to fix, rather than surfacing as broken requests later:
+
+| Message at startup | Fix |
+|---|---|
+| `Missing environment variables: ...` | `cp .env.example .env` and fill it in |
+| `Login failed for user '...'` | wrong username/password in `.env` |
+| `Failed to connect to ...` | wrong server/port, or the instance needs `MSSQL_INSTANCE` |
+| `self signed certificate` | set `MSSQL_TRUST_SERVER_CERTIFICATE=true` |
+| `Missing tables: WP_...` | run `npm run db:setup` |
 
 ### How the two servers fit together
 
