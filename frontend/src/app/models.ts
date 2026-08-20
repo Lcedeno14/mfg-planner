@@ -15,9 +15,10 @@
  * every component that needs to catch up. In a bigger system this contract
  * might be generated from an OpenAPI spec — same idea, automated.
  *
- * Note the number-as-boolean pattern: SQLite has no boolean type, so flags
- * like `done` and `second_shift` arrive as 0 or 1. TypeScript calls them
- * `number` and code tests them with truthiness (`if (s.done)`).
+ * Note the number-as-boolean pattern: the database stores flags like `done`
+ * and `second_shift` as INT columns holding 0 or 1, so they arrive as numbers.
+ * TypeScript types them `number` and code tests them with truthiness
+ * (`if (s.done)`) rather than `=== true`.
  */
 
 /** One serial number chip under a deliverable. */

@@ -37,7 +37,7 @@ Then run it in whichever mode you want (below). A few things worth knowing:
 
 - **The database must already exist.** `db:setup` creates the *tables*, not the database — ask your DBA for an empty database, or `CREATE DATABASE Lineboard;` if you have rights.
 - **Skip `db:seed` on a real database.** It inserts invented departments; it refuses to run once any departments exist, and the app is perfectly usable empty — add your departments and ops on the **Setup** page.
-- **`better-sqlite3` is an optional dependency** and is not used at runtime. It compiles native code, so if a locked-down machine can't build it, `npm install` still succeeds and the app runs fine. Only `npm run db:migrate` needs it.
+- **No native modules.** Every dependency is pure JavaScript, so `npm install` needs no C++ build tools — it works on a locked-down machine.
 - **Common connection settings** — named instances, Windows/domain logins and self-signed certificates are all covered in the comments in `.env.example`.
 
 ## Run it
@@ -131,24 +131,6 @@ Azure SQL note: keep `MSSQL_ENCRYPT=true` (default). For a local SQL Server with
 - **Deleting a week** cascades in the database to its deliverables, serials and day plans. **Deleting a department** does not cascade by design; the API removes its rows explicitly in one transaction and reports what it deleted. See the cascade note at the top of [create-tables.sql](backend/scripts/create-tables.sql).
 - **Parameterized queries everywhere.** Values are bound as parameters, never concatenated into SQL.
 
-### Migrating data from the old SQLite build
-
-Earlier versions stored data in a local SQLite file (`backend/data/planner.db`). If you have one, move it across in one command — the table names and schema are identical:
-
-```bash
-cd backend
-npm install                       # better-sqlite3 is a devDependency, used only by this script
-npm run db:migrate -- --dry-run   # preview what would be copied (no SQL Server needed)
-npm run db:migrate                # copy everything into the WP_ tables
-```
-
-- IDs are preserved, so every serial number, deliverable, and day plan keeps its links.
-- The whole migration runs in a single transaction — it either completes fully or leaves SQL Server untouched.
-- It refuses to run into non-empty `WP_` tables; add `--force` to wipe them and migrate fresh.
-- Safe order of operations: `npm run db:setup` first (creates tables), then `npm run db:migrate`.
-
-The runtime no longer uses SQLite at all — this script is the only thing that reads it.
-
 ## Structure
 
 ```
@@ -158,7 +140,6 @@ backend/
   scripts/create-tables.sql  # SQL Server DDL for all WP_ tables (idempotent)
   scripts/setup-db.js        # npm run db:setup — creates missing tables, verifies
   scripts/seed-demo.js       # npm run db:seed — optional sample week
-  scripts/migrate-sqlite-to-mssql.js  # npm run db:migrate — old SQLite file -> MSSQL
   .env.example     # SQL Server connection template (copy to .env)
 frontend/
   src/app/

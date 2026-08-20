@@ -5,10 +5,9 @@
  *
  * Usage:  npm run db:seed
  *
- * This is deliberately NOT automatic. The SQLite build seeded itself on first
- * run, which is harmless for a throwaway local file — but this now points at a
- * real SQL Server, and quietly inserting invented departments into a plant
- * database would be the wrong default. Run it only when you want demo data.
+ * This is deliberately NOT automatic. The app points at a real SQL Server
+ * database, and quietly inserting invented departments into a plant database
+ * would be the wrong default. Run it only when you want demo data.
  *
  * It refuses to run if any departments already exist, so it can never dilute
  * real data. All op codes, departments and serial numbers are made up.

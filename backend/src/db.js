@@ -160,8 +160,8 @@ async function run(text, params = [], tx = null) {
 /**
  * Runs an INSERT and returns the new row's id.
  *
- * SQL Server has no equivalent of SQLite's `lastInsertRowid`, so the INSERT
- * itself must ask for the generated key. `OUTPUT INSERTED.id` is the safe way:
+ * There is no "last inserted id" call to make afterwards, so the INSERT itself
+ * must ask for the generated key. `OUTPUT INSERTED.id` is the safe way:
  * it is scoped to this exact statement, unlike @@IDENTITY (which can pick up an
  * id created by a trigger) or SCOPE_IDENTITY() (which needs a second round trip).
  * Callers pass the INSERT without the OUTPUT clause; it is spliced in here.
