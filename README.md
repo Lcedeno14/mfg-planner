@@ -1,12 +1,12 @@
 # Lineboard — Weekly Production Planner
 
-A weekly planning board for a multi-department manufacturing line, replacing the Excel weekly plan. Angular 19 + PrimeNG frontend, Node/Express + SQLite backend.
+A weekly planning board for a multi-department manufacturing line, replacing the Excel weekly plan. Angular 19 + PrimeNG frontend, Node/Express + Microsoft SQL Server backend.
 
 ## What it does
 
 - **Weekly board** — one card per department (Fabrication, Machining, Coatings Lab, Quality & Finishing), each with:
   - **Deliverables**: operations (from the op catalog) with a weekly goal and serial numbers. Click an SN chip to mark it complete (turns green) — same habit as highlighting cells in the sheet.
-  - **Daily plan**: Mon–Fri rows with a plan note, goal, and actual, plus 1st/2nd shift notes and comments behind the note icon.
+  - **Daily plan**: Mon–Sat rows with a 1st/2nd shift plan, goal, and actual, plus shift notes and comments behind the note icon. The 2nd-shift rows can be hidden per department.
 - **Andon scoreboard** — week total plus per-day actual/goal/% tiles, colored green/amber/red, computed live from the department daily actuals. Today's tile is marked when viewing the current week.
 - **Weeks** — create a new week (optionally copying operations from the selected week), switch between weeks like sheet tabs.
 - **Suggested plan** — v1 of the automation: reads the active-unit snapshot (mocked stand-in for the part-transaction SQL database), groups queued units by their current op, proposes a weekly goal per op based on average labor hours vs. a 40 h capacity assumption, and lets you push a suggestion straight into a week's plan. Units with no recent transactions are flagged **verify**, since the source data runs ~80% accurate.
@@ -15,13 +15,19 @@ All op codes, departments, and serial numbers are made-up examples.
 
 ## Run it
 
-Requires Node 20+.
+Requires Node 20+ and a reachable Microsoft SQL Server database. Set the database up first (see [Microsoft SQL Server setup](#microsoft-sql-server-setup) below) — the API refuses to start without it.
 
 ```bash
-# Terminal 1 — API (port 3000)
+# One time — database connection + tables
 cd backend
 npm install
-node src/server.js
+cp .env.example .env      # fill in your SQL Server details
+npm run db:setup          # creates the WP_ tables
+npm run db:seed           # optional: sample week of demo data
+
+# Terminal 1 — API (port 3000)
+cd backend
+npm start
 
 # Terminal 2 — Angular dev server (port 4200, proxies /api to 3000)
 cd frontend
@@ -29,7 +35,9 @@ npm install
 npx ng serve
 ```
 
-Open http://localhost:4200. The SQLite database is created and seeded at `backend/data/planner.db` on first run (delete it to re-seed).
+Open http://localhost:4200.
+
+The API checks its connection and schema at startup, so misconfiguration fails immediately with a message telling you what to fix, rather than surfacing as broken requests later.
 
 **Production:** `cd frontend && npx ng build`, then run the backend — Express serves the built app at http://localhost:3000. Open **:3000**, not :4200, and re-run `ng build` after any frontend change (production serves the compiled files, not your source).
 
@@ -74,16 +82,29 @@ All tables use the `WP_` (Weekly Planner) prefix: `WP_departments`, `WP_op_catal
    npm install
    npm run db:setup
    ```
+4. Optionally load a sample week so the board has something to show:
+   ```bash
+   npm run db:seed
+   ```
+   Seeding is **not** automatic and refuses to run once any departments exist, so it can never mix invented departments into real data. On an empty database the app is still usable — add your departments and ops on the Setup page.
 
 Azure SQL note: keep `MSSQL_ENCRYPT=true` (default). For a local SQL Server with a self-signed certificate, also set `MSSQL_TRUST_SERVER_CERTIFICATE=true`.
 
-### Migrating your SQLite data
+### Notes on the data layer
 
-Local development runs on SQLite (`backend/data/planner.db`) with the same `WP_` table names and schema, so moving your existing weeks into SQL Server is one command:
+- **Connection pooling.** The API opens one pool at startup and reuses those connections; it never opens a connection per request.
+- **Transactions.** Multi-step writes — creating a week, applying a suggestion, deleting a department — run inside a transaction, so a failure part-way leaves nothing half-applied.
+- **Deleting a week** cascades in the database to its deliverables, serials and day plans. **Deleting a department** does not cascade by design; the API removes its rows explicitly in one transaction and reports what it deleted. See the cascade note at the top of [create-tables.sql](backend/scripts/create-tables.sql).
+- **Parameterized queries everywhere.** Values are bound as parameters, never concatenated into SQL.
+
+### Migrating data from the old SQLite build
+
+Earlier versions stored data in a local SQLite file (`backend/data/planner.db`). If you have one, move it across in one command — the table names and schema are identical:
 
 ```bash
 cd backend
-npm run db:migrate -- --dry-run   # preview what would be copied (no MSSQL needed)
+npm install                       # better-sqlite3 is a devDependency, used only by this script
+npm run db:migrate -- --dry-run   # preview what would be copied (no SQL Server needed)
 npm run db:migrate                # copy everything into the WP_ tables
 ```
 
@@ -92,17 +113,18 @@ npm run db:migrate                # copy everything into the WP_ tables
 - It refuses to run into non-empty `WP_` tables; add `--force` to wipe them and migrate fresh.
 - Safe order of operations: `npm run db:setup` first (creates tables), then `npm run db:migrate`.
 
-After migrating, the remaining step is switching the Express data layer from `better-sqlite3` to the `mssql` connection (both packages are already installed; the queries and table names are identical).
+The runtime no longer uses SQLite at all — this script is the only thing that reads it.
 
 ## Structure
 
 ```
 backend/
-  src/db.js        # schema + seed (departments, op catalog, sample week, active-unit mock)
+  src/db.js        # SQL Server connection pool + query/transaction helpers
   src/server.js    # REST API + suggestion engine + static hosting
   scripts/create-tables.sql  # SQL Server DDL for all WP_ tables (idempotent)
   scripts/setup-db.js        # npm run db:setup — creates missing tables, verifies
-  scripts/migrate-sqlite-to-mssql.js  # npm run db:migrate — SQLite data -> MSSQL
+  scripts/seed-demo.js       # npm run db:seed — optional sample week
+  scripts/migrate-sqlite-to-mssql.js  # npm run db:migrate — old SQLite file -> MSSQL
   .env.example     # SQL Server connection template (copy to .env)
 frontend/
   src/app/
@@ -124,6 +146,6 @@ frontend/
 ## Roadmap (hooks already in place)
 
 1. **Real transaction data** — replace the `active_units` mock with a view over the plant SQL database; the suggestion endpoint stays the same.
-2. **Labor-hour planning** — `op_catalog.avg_labor_hours` already drives suggested goals; extend with per-day capacity and headcount to auto-fill the Mon–Fri goals.
+2. **Labor-hour planning** — `op_catalog.avg_labor_hours` already drives suggested goals; extend with per-day capacity and headcount to auto-fill the Mon–Sat goals.
 3. **Auto-actuals** — derive daily actuals from operation-complete transactions instead of manual entry, with a manual override for the 20% the data gets wrong.
 4. **History & trends** — weekly % over time per department (data model already keeps every week).
